@@ -1,0 +1,50 @@
+import time
+from collections import deque
+
+class SoccerField:
+    def __init__(self, rows, cols, player_pos, optimal_pos, defenders):
+        self.rows = rows
+        self.cols = cols
+        self.player_pos = player_pos
+        self.optimal_pos = optimal_pos
+        self.defenders = set(defenders)  # Set for quick lookup
+        self.directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # Right, Down, Left, Up
+    
+    def is_valid(self, x, y, visited):
+        return (0 <= x < self.rows and 0 <= y < self.cols and 
+                (x, y) not in self.defenders and (x, y) not in visited)
+
+    def bfs_find_path(self):
+        queue = deque([(self.player_pos, [self.player_pos], time.time())])  # (current_position, path_taken, start_time)
+        visited = set()
+        visited.add(self.player_pos)
+        
+        while queue:
+            (x, y), path, start_time = queue.popleft()
+            
+            # Check if reached optimal position
+            if (x, y) == self.optimal_pos:
+                return path, time.time() - start_time  # Return path and time taken
+            
+            for dx, dy in self.directions:
+                new_x, new_y = x + dx, y + dy
+                if self.is_valid(new_x, new_y, visited):
+                    visited.add((new_x, new_y))
+                    queue.append(((new_x, new_y), path + [(new_x, new_y)], start_time))
+        
+        return None, None  # No path found
+
+# Example Usage
+rows, cols = 8, 8  # 8x8 field
+player_start = (0, 0)
+optimal_position = (6, 6)
+defender_positions = [(3, 3), (4, 4), (5, 5), (6, 5)]  # Some defenders
+
+soccer_field = SoccerField(rows, cols, player_start, optimal_position, defender_positions)
+path, time_taken = soccer_field.bfs_find_path()
+
+if path:
+    print("Shortest Path:", path)
+    print("Time Taken:", round(time_taken, 2), "seconds")
+else:
+    print("No path found!")
