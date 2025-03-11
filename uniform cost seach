@@ -1,0 +1,83 @@
+import heapq
+import random
+
+class SoccerUCS:
+    def __init__(self, rows, cols, player_pos, goal_pos, mud_zones, counterattack=False):
+        self.rows = rows
+        self.cols = cols
+        self.player_pos = player_pos
+        self.goal_pos = goal_pos
+        self.mud_zones = set(mud_zones)  # Muddy sections
+        self.counterattack = counterattack  # If true, speed is prioritized over energy
+        self.directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # Right, Down, Left, Up
+
+    def is_valid(self, x, y):
+        return 0 <= x < self.rows and 0 <= y < self.cols  # Check if position is in bounds
+
+    def movement_cost(self, curr, next_pos, prev_direction):
+        """Calculates energy cost based on terrain and movement type."""
+        x, y = next_pos
+        base_cost = 1  # Default cost for jogging on normal ground
+
+        if next_pos in self.mud_zones:
+            base_cost = 3  # Muddy terrain increases effort
+
+        # Sprinting strategy if a counterattack occurs
+        if self.counterattack:
+            base_cost += 1  # Extra effort for speed
+
+        # Additional cost for sudden direction changes
+        if prev_direction and prev_direction != (x - curr[0], y - curr[1]):
+            base_cost += 1  # Turning is slightly more tiring
+
+        return base_cost
+
+    def ucs(self):
+        """Uniform Cost Search for the lowest energy path."""
+        pq = [(0, self.player_pos, [])]  # (Energy cost, Position, Path)
+        visited = set()
+
+        while pq:
+            energy, (x, y), path = heapq.heappop(pq)
+
+            if (x, y) == self.goal_pos:
+                return path + [(x, y)], energy  # Reached the goal
+
+            if (x, y) in visited:
+                continue
+            visited.add((x, y))
+
+            for dx, dy in self.directions:
+                new_x, new_y = x + dx, y + dy
+                if self.is_valid(new_x, new_y):
+                    cost = self.movement_cost((x, y), (new_x, new_y), path[-1] if path else None)
+                    heapq.heappush(pq, (energy + cost, (new_x, new_y), path + [(x, y)]))
+
+        return None, None  # No path found
+
+    def simulate_counterattack(self):
+        """Simulates a counterattack, forcing UCS to prioritize speed over energy."""
+        print("Counterattack! Prioritizing speed over energy...")
+        self.counterattack = True  # Enable speed-prioritization
+        return self.ucs()  # Recalculate with new constraints
+
+# Example Usage
+rows, cols = 8, 8  # 8x8 field
+player_start = (0, 0)
+goal_position = (7, 7)
+mud_zones = [(3, 3), (4, 4), (5, 5)]  # Sections of the field that require more energy
+
+soccer_ucs = SoccerUCS(rows, cols, player_start, goal_position, mud_zones)
+best_path, min_energy = soccer_ucs.ucs()
+
+if best_path:
+    print("Optimal Path:", best_path)
+    print("Minimum Energy Cost:", min_energy)
+else:
+    print("No valid path found!")
+
+# Simulate a counterattack scenario
+if random.random() < 0.5:  # 50% chance of counterattack occurring
+    best_path, min_energy = soccer_ucs.simulate_counterattack()
+    print("Counterattack Path:", best_path)
+    print("Adjusted Energy Cost:", min_energy)
