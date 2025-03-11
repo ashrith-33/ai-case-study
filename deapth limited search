@@ -1,0 +1,79 @@
+import random
+import time
+
+class SoccerDLS:
+    def __init__(self, rows, cols, player_pos, defensive_zone, ball_pos, max_depth):
+        self.rows = rows
+        self.cols = cols
+        self.player_pos = player_pos
+        self.defensive_zone = defensive_zone  # Allowed defensive area (min_x, max_x, min_y, max_y)
+        self.ball_pos = ball_pos
+        self.max_depth = max_depth  # Maximum depth limit for search
+        self.directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # Right, Down, Left, Up
+
+    def is_valid(self, x, y):
+        """Check if position is within the defensive zone."""
+        min_x, max_x, min_y, max_y = self.defensive_zone
+        return min_x <= x <= max_x and min_y <= y <= max_y
+
+    def dls(self, position, depth):
+        """Recursive Depth-Limited Search."""
+        if depth > self.max_depth:
+            return None  # Stop if depth limit is reached
+
+        x, y = position
+        best_position = position
+        min_distance = self.distance(position, self.ball_pos)
+
+        for dx, dy in self.directions:
+            new_x, new_y = x + dx, y + dy
+            if self.is_valid(new_x, new_y):
+                new_position = (new_x, new_y)
+                new_distance = self.distance(new_position, self.ball_pos)
+
+                if new_distance < min_distance:  # Move closer to the ball
+                    min_distance = new_distance
+                    best_position = new_position
+
+                deeper_position = self.dls(new_position, depth + 1)
+                if deeper_position:
+                    deeper_distance = self.distance(deeper_position, self.ball_pos)
+                    if deeper_distance < min_distance:
+                        best_position = deeper_position
+                        min_distance = deeper_distance
+
+        return best_position
+
+    def distance(self, pos1, pos2):
+        """Calculate Manhattan distance between two positions."""
+        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+
+    def move_ball(self):
+        """Simulate ball movement (opposing team changes passing strategy)."""
+        ball_x, ball_y = self.ball_pos
+        move_x, move_y = random.choice(self.directions)
+        new_x, new_y = ball_x + move_x, ball_y + move_y
+        if 0 <= new_x < self.rows and 0 <= new_y < self.cols:
+            self.ball_pos = (new_x, new_y)
+
+    def find_best_position(self):
+        """Find the best interception position using DLS."""
+        start_time = time.time()
+        best_position = self.dls(self.player_pos, 0)
+        return best_position, round(time.time() - start_time, 2)
+
+# Example Usage
+rows, cols = 10, 10  # 10x10 field
+player_start = (5, 5)  # Defensive midfielder's starting position
+defensive_zone = (3, 7, 3, 7)  # Defined defensive area (min_x, max_x, min_y, max_y)
+ball_position = (7, 7)  # Initial ball position
+max_depth = 3  # Depth limit to prevent over-committing
+
+soccer_dls = SoccerDLS(rows, cols, player_start, defensive_zone, ball_position, max_depth)
+
+# Run multiple times to simulate changing ball movement
+for _ in range(3):
+    best_position, time_taken = soccer_dls.find_best_position()
+    print("Best Interception Position:", best_position)
+    print("Time Taken:", time_taken, "seconds")
+    soccer_dls.move_ball()  # Simulate the ball moving to a new location
