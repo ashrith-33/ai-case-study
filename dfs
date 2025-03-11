@@ -1,0 +1,77 @@
+import random
+import time
+
+class SoccerDFS:
+    def __init__(self, rows, cols, player_pos, goal_pos, defenders, max_depth):
+        self.rows = rows
+        self.cols = cols
+        self.player_pos = player_pos
+        self.goal_pos = goal_pos
+        self.defenders = set(defenders)
+        self.max_depth = max_depth  # Limit to prevent excessive path lengths
+        self.directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # Right, Down, Left, Up
+    
+    def is_valid(self, x, y, visited):
+        return (0 <= x < self.rows and 0 <= y < self.cols and 
+                (x, y) not in self.defenders and (x, y) not in visited)
+
+    def dfs(self, position, path, depth, visited):
+        if position == self.goal_pos:
+            return path  # Goal reached
+        
+        if depth > self.max_depth:
+            return None  # Exceeded max depth, stop exploration
+
+        x, y = position
+        visited.add(position)
+        
+        # Shuffle move order to simulate different attacking strategies
+        random.shuffle(self.directions)
+        
+        for dx, dy in self.directions:
+            new_x, new_y = x + dx, y + dy
+            if self.is_valid(new_x, new_y, visited):
+                new_path = self.dfs((new_x, new_y), path + [(new_x, new_y)], depth + 1, visited)
+                if new_path:  # Stop if a valid path is found
+                    return new_path
+
+        visited.remove(position)  # Backtrack
+        return None  # No valid path found
+
+    def move_defenders(self):
+        """Randomly move defenders to simulate active movement."""
+        new_defenders = set()
+        for x, y in self.defenders:
+            move_x, move_y = random.choice(self.directions)
+            new_x, new_y = x + move_x, y + move_y
+            if 0 <= new_x < self.rows and 0 <= new_y < self.cols and (new_x, new_y) != self.goal_pos:
+                new_defenders.add((new_x, new_y))
+            else:
+                new_defenders.add((x, y))  # Stay in place if movement is invalid
+        self.defenders = new_defenders
+
+    def find_goal_path(self):
+        start_time = time.time()
+        path = None
+
+        while not path:  # Keep trying until a valid path is found
+            path = self.dfs(self.player_pos, [self.player_pos], 0, set())
+            self.move_defenders()  # Defenders move dynamically
+
+        return path, round(time.time() - start_time, 2)  # Path and time taken
+
+# Example Usage
+rows, cols = 8, 8  # 8x8 field
+player_start = (0, 0)
+goal_position = (7, 7)
+defender_positions = [(3, 3), (4, 4), (5, 5), (6, 5)]  # Initial defender locations
+max_depth = 20  # Limit depth to prevent infinite loops
+
+soccer_game = SoccerDFS(rows, cols, player_start, goal_position, defender_positions, max_depth)
+goal_path, time_taken = soccer_game.find_goal_path()
+
+if goal_path:
+    print("Path to Goal:", goal_path)
+    print("Time Taken:", time_taken, "seconds")
+else:
+    print("No valid path found!")
